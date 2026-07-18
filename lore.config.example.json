@@ -1,0 +1,49 @@
+{
+  "sources": {
+    "kilo": {
+      "enabled": true,
+      "databasePath": "~/.local/share/kilo/kilo.db"
+    },
+    "codex": {
+      "enabled": true,
+      "historyPath": "~/.codex/history.jsonl",
+      "stateDbPath": "~/.codex/state_5.sqlite",
+      "sessionsDir": "~/.codex/sessions"
+    },
+    "claude": {
+      "enabled": true,
+      "historyPath": "~/.claude/history.jsonl",
+      "projectsDir": "~/.claude/projects",
+      "sessionsDir": "~/.claude/sessions"
+    },
+    "chatgpt": {
+      "enabled": false,
+      "exportsDir": "~/Downloads/chatgpt-exports"
+    },
+    "claudeWeb": {
+      "enabled": false,
+      "exportsDir": "~/Downloads/claude-exports"
+    },
+    "github": {
+      "enabled": false,
+      "username": "",
+      "repos": []
+    }
+  },
+  "llm": {
+    "provider": "gemini",
+    "apiKey": "$GEMINI_API_KEY",
+    "model": "gemini-2.0-flash"
+  },
+  "embedding": {
+    "provider": "ollama",
+    "model": "nomic-embed-text",
+    "dimensions": 768
+  },
+  "database": {
+    "path": "./knowledge.db"
+  },
+  "dateRange": {
+    "start": "2026-05-14"
+  }
+}

@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+dist/
+knowledge.db
+knowledge.db-wal
+knowledge.db-shm
+lore.config.json
+copies/
+plan/
+.env
+.env.local
+.DS_Store
+*.tsbuildinfo
+next-env.d.ts
+AGENTS.md
