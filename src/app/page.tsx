@@ -152,41 +152,77 @@ function SessionCard(s: Session) {
 }
 
 function HeatmapSection() {
+  const [dates, setDates] = useState<{ date: string; intensity: number }[]>([]);
+  const [firstDate, setFirstDate] = useState("");
+  const [lastDate, setLastDate] = useState("");
+
+  useEffect(() => {
+    fetch("/api/activity")
+      .then((r) => r.json())
+      .then((data) => {
+        setDates(data.dates);
+        setFirstDate(data.firstDate);
+        setLastDate(data.lastDate);
+      })
+      .catch(() => {});
+  }, []);
+
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  const months = new Map<string, { date: string; intensity: number }[]>();
+  for (const d of dates) {
+    const month = `${monthNames[new Date(d.date + "T00:00:00").getMonth()]} ${new Date(d.date + "T00:00:00").getFullYear()}`;
+    if (!months.has(month)) months.set(month, []);
+    months.get(month)!.push(d);
+  }
+
+  const formatFirst = firstDate
+    ? new Date(firstDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    : "";
+  const formatLast = lastDate
+    ? new Date(lastDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    : "";
+
   return (
     <div className="bg-[#131315] border border-[#1f1f23] rounded-lg p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-medium text-zinc-400">Activity</h2>
-        <Link href="/day/2026-05-14" className="text-xs text-zinc-600 hover:text-zinc-400">May 14 — Today</Link>
+        <span className="text-xs text-zinc-600">{formatFirst} — {formatLast}</span>
       </div>
 
       <div className="space-y-2">
-        {["May", "June", "July"].map((month) => {
-          const days = month === "May" ? 18 : month === "July" ? 18 : 30;
-          return (
-            <div key={month} className="flex items-center gap-3">
-              <span className="text-xs text-zinc-600 w-9">{month}</span>
-              <div className="flex gap-[3px]">
-                {Array.from({ length: days }).map((_, i) => {
-                  const intensity = Math.random();
+        {Array.from(months.entries()).map(([month, monthDates]) => (
+          <div key={month} className="flex items-center gap-3">
+            <span className="text-xs text-zinc-600 w-12">{month}</span>
+            <div className="flex gap-[3px]">
+              {monthDates.map((d) => {
+                const cell = (
+                  <div
+                    key={d.date}
+                    className={`w-3 h-3 rounded-sm transition-all duration-75 hover:ring-1 hover:ring-violet-400 hover:scale-125 cursor-pointer ${
+                      d.intensity > 0.7
+                        ? "bg-violet-500"
+                        : d.intensity > 0.4
+                          ? "bg-violet-500/50"
+                          : d.intensity > 0
+                            ? "bg-violet-500/20"
+                            : "bg-zinc-800"
+                    }`}
+                    title={d.date}
+                  />
+                );
+                if (d.intensity > 0) {
                   return (
-                    <div
-                      key={i}
-                      className={`w-3 h-3 rounded-sm cursor-pointer transition-all duration-75 hover:ring-1 hover:ring-violet-400 hover:scale-125 ${
-                        intensity > 0.7
-                          ? "bg-violet-500"
-                          : intensity > 0.4
-                            ? "bg-violet-500/50"
-                            : intensity > 0.1
-                              ? "bg-violet-500/20"
-                              : "bg-zinc-800"
-                      }`}
-                    />
+                    <Link key={d.date} href={`/day/${d.date}`}>
+                      {cell}
+                    </Link>
                   );
-                })}
-              </div>
+                }
+                return cell;
+              })}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
 
       <div className="flex items-center gap-2 mt-3 text-[11px] text-zinc-600">

@@ -4,6 +4,7 @@ import { getDb } from '../core/db/connection';
 import { parserRegistry } from '../core/parsers/registry';
 import '../core/parsers/kilo';
 import '../core/parsers/codex';
+import '../core/parsers/claude';
 import { ingestParser } from '../core/ingest/pipeline';
 
 const program = new Command();
