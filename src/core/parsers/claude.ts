@@ -3,15 +3,26 @@ import readline from 'readline';
 import path from 'path';
 import os from 'os';
 import { BaseParser } from './base';
-import type { ParserResult } from './base';
+import type { ParserResult, RawChatSession, RawChatMessage } from './base';
 import { parserRegistry } from './registry';
 
-interface ClaudeEntry {
+interface ClaudeHistoryEntry {
   display: string;
-  pastedContents: Record<string, unknown>;
   timestamp: number;
   project: string;
   sessionId: string;
+}
+
+interface ClaudeMessage {
+  role: string;
+  text: string;
+  timestamp: string;
+}
+
+interface ProjectFileData {
+  sessionId: string;
+  projectPath: string;
+  messages: ClaudeMessage[];
 }
 
 function msToISO(ms: number): string {
@@ -22,6 +33,10 @@ function extractProjectName(projectPath: string): string {
   if (!projectPath || projectPath === '/') return 'global';
   const parts = projectPath.split('/').filter(Boolean);
   return parts[parts.length - 1] ?? 'global';
+}
+
+function projectPathFromDir(dirName: string): string {
+  return '/' + dirName.replace(/-/g, '/').slice(1);
 }
 
 export class ClaudeParser extends BaseParser {
@@ -39,47 +54,118 @@ export class ClaudeParser extends BaseParser {
 
   async parse(): Promise<ParserResult> {
     const historyPath = path.join(process.cwd(), 'copies', 'claude-history.jsonl');
+    const projectsDir = path.join(process.cwd(), 'copies', 'claude-projects');
 
-    if (!fs.existsSync(historyPath)) {
-      return { sessions: [], messages: [], toolInvocations: [] };
+    const historyEntries = fs.existsSync(historyPath)
+      ? await this.loadHistoryJsonl(historyPath)
+      : [];
+
+    const historySessionIds = new Set(historyEntries.map((e) => e.sessionId));
+
+    const projectFiles = fs.existsSync(projectsDir)
+      ? await this.loadAllProjectFiles(projectsDir)
+      : [];
+
+    const sessions: RawChatSession[] = [];
+    const messages: RawChatMessage[] = [];
+
+    const matchedProjectIds = new Set<string>();
+
+    for (const pf of projectFiles) {
+      if (historySessionIds.has(pf.sessionId)) {
+        matchedProjectIds.add(pf.sessionId);
+      }
     }
 
-    const entries = await this.loadEntries(historyPath);
-
-    const sessionMap = new Map<string, ClaudeEntry[]>();
-    for (const entry of entries) {
-      const group = sessionMap.get(entry.sessionId) || [];
-      group.push(entry);
-      sessionMap.set(entry.sessionId, group);
+    const sessionsById = new Map<string, ClaudeHistoryEntry[]>();
+    for (const entry of historyEntries) {
+      const arr = sessionsById.get(entry.sessionId) ?? [];
+      arr.push(entry);
+      sessionsById.set(entry.sessionId, arr);
     }
 
-    const sessions = [];
-    const messages = [];
+    for (const [sessionId, entries] of sessionsById) {
+      const sorted = entries.sort((a, b) => a.timestamp - b.timestamp);
+      const projectMsgs = projectFiles.find((pf) => pf.sessionId === sessionId);
 
-    for (const [sessionId, msgs] of sessionMap) {
-      const sorted = msgs.sort((a, b) => a.timestamp - b.timestamp);
-      const first = sorted[0];
-      const last = sorted[sorted.length - 1];
+      let firstTs: number;
+      let lastTs: number;
+      let msgs: ClaudeMessage[];
+      let msgSource: string;
+
+      if (projectMsgs) {
+        const timestamps = projectMsgs.messages
+          .map((m) => new Date(m.timestamp).getTime())
+          .filter((t) => !isNaN(t));
+        firstTs = timestamps.length > 0 ? Math.min(...timestamps) : sorted[0]?.timestamp ?? Date.now();
+        lastTs = timestamps.length > 0 ? Math.max(...timestamps) : sorted[sorted.length - 1]?.timestamp ?? Date.now();
+        msgs = projectMsgs.messages;
+        msgSource = 'project_file';
+      } else {
+        firstTs = sorted[0]?.timestamp ?? Date.now();
+        lastTs = sorted[sorted.length - 1]?.timestamp ?? Date.now();
+        msgs = sorted.map((e) => ({
+          role: 'user',
+          text: e.display,
+          timestamp: msToISO(e.timestamp),
+        }));
+        msgSource = 'history_jsonl';
+      }
 
       sessions.push({
         source: this.name,
         externalId: sessionId,
-        title: first?.display.slice(0, 120) ?? 'Untitled',
-        project: extractProjectName(first?.project ?? ''),
-        projectPath: first?.project,
-        firstMessageAt: msToISO(first?.timestamp ?? Date.now()),
-        lastMessageAt: msToISO(last?.timestamp ?? Date.now()),
-        metadata: { project: first?.project },
+        title: sorted[0]?.display.slice(0, 120) ?? 'Untitled',
+        project: extractProjectName(sorted[0]?.project ?? '/'),
+        projectPath: sorted[0]?.project ?? '/',
+        firstMessageAt: msToISO(firstTs),
+        lastMessageAt: msToISO(lastTs),
+        metadata: { msgSource },
       });
 
-      for (const msg of sorted) {
-        if (!msg.display) continue;
+      for (const msg of msgs) {
+        if (!msg.text) continue;
         messages.push({
           sessionExternalId: sessionId,
-          role: 'user' as const,
-          content: msg.display,
-          timestamp: msToISO(msg.timestamp),
-          metadata: { project: msg.project },
+          role: msg.role as 'user' | 'assistant' | 'system',
+          content: msg.text,
+          timestamp: msg.timestamp,
+          metadata: { source: msgSource },
+        });
+      }
+    }
+
+    for (const pf of projectFiles) {
+      if (matchedProjectIds.has(pf.sessionId)) continue;
+
+      const timestamps = pf.messages
+        .map((m) => new Date(m.timestamp).getTime())
+        .filter((t) => !isNaN(t));
+      const firstTs = timestamps[0] ?? Date.now();
+      const lastTs = timestamps[timestamps.length - 1] ?? Date.now();
+
+      const userMsgs = pf.messages.filter((m) => m.role === 'user');
+      const title = userMsgs[0]?.text.slice(0, 120) ?? 'Untitled';
+
+      sessions.push({
+        source: this.name,
+        externalId: pf.sessionId,
+        title,
+        project: extractProjectName(pf.projectPath),
+        projectPath: pf.projectPath,
+        firstMessageAt: msToISO(firstTs),
+        lastMessageAt: msToISO(lastTs),
+        metadata: { msgSource: 'project_file_only' },
+      });
+
+      for (const msg of pf.messages) {
+        if (!msg.text) continue;
+        messages.push({
+          sessionExternalId: pf.sessionId,
+          role: msg.role as 'user' | 'assistant' | 'system',
+          content: msg.text,
+          timestamp: msg.timestamp,
+          metadata: { source: 'project_file' },
         });
       }
     }
@@ -87,20 +173,108 @@ export class ClaudeParser extends BaseParser {
     return { sessions, messages, toolInvocations: [] };
   }
 
-  private async loadEntries(filePath: string): Promise<ClaudeEntry[]> {
-    const results: ClaudeEntry[] = [];
+  private async loadHistoryJsonl(filePath: string): Promise<ClaudeHistoryEntry[]> {
+    const results: ClaudeHistoryEntry[] = [];
     const fileStream = fs.createReadStream(filePath);
     const rl = readline.createInterface({ input: fileStream });
 
     for await (const line of rl) {
       try {
-        results.push(JSON.parse(line));
+        const entry = JSON.parse(line);
+        results.push({
+          display: entry.display ?? '',
+          timestamp: entry.timestamp ?? 0,
+          project: entry.project ?? '/',
+          sessionId: entry.sessionId ?? '',
+        });
       } catch {
         continue;
       }
     }
 
     return results;
+  }
+
+  private async loadAllProjectFiles(projectsDir: string): Promise<ProjectFileData[]> {
+    const results: ProjectFileData[] = [];
+    const files = this.findProjectFiles(projectsDir);
+
+    for (const filePath of files) {
+      const dirName = path.basename(path.dirname(filePath));
+      const projectPath = projectPathFromDir(dirName);
+      const messages: ClaudeMessage[] = [];
+      const fileStream = fs.createReadStream(filePath);
+      const rl = readline.createInterface({ input: fileStream });
+
+      let currentSessionId = '';
+
+      for await (const line of rl) {
+        try {
+          const entry = JSON.parse(line);
+
+          if (entry.sessionId) {
+            currentSessionId = entry.sessionId;
+          }
+
+          const entryType = entry.type;
+          if (entryType === 'user' || entryType === 'assistant' || entryType === 'system') {
+            let text = '';
+
+            if (entry.message?.content) {
+              if (Array.isArray(entry.message.content)) {
+                text = entry.message.content
+                  .filter((c: { type?: string }) => c.type === 'text')
+                  .map((c: { text?: string }) => c.text ?? '')
+                  .filter(Boolean)
+                  .join('\n');
+              } else if (typeof entry.message.content === 'string') {
+                text = entry.message.content;
+              }
+            }
+
+            if (text) {
+              messages.push({
+                role: entryType,
+                text,
+                timestamp: entry.timestamp ?? new Date().toISOString(),
+              });
+            }
+          }
+        } catch {
+          continue;
+        }
+      }
+
+      if (messages.length > 0 && currentSessionId) {
+        results.push({
+          sessionId: currentSessionId,
+          projectPath,
+          messages,
+        });
+      }
+    }
+
+    return results;
+  }
+
+  private findProjectFiles(dir: string): string[] {
+    const files: string[] = [];
+
+    function walk(d: string) {
+      if (!fs.existsSync(d)) return;
+      const entries = fs.readdirSync(d, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(d, entry.name);
+        if (entry.isDirectory() && !entry.name.startsWith('subagents')) {
+          walk(fullPath);
+        } else if (entry.name.endsWith('.jsonl')) {
+          files.push(fullPath);
+        }
+      }
+    }
+
+    walk(dir);
+    return files;
   }
 }
 

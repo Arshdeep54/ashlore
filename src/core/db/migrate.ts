@@ -42,7 +42,7 @@ function applyMigration(db: Database.Database, version: number): void {
   runAll();
 }
 
-export function migrate(configPath?: string): void {
+export function migrate(): void {
   const db = getDb();
   const currentVersion = getCurrentVersion(db);
 

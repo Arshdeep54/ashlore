@@ -9,7 +9,7 @@ export class GeminiProvider extends BaseLLMProvider {
 
   constructor(config: LlmConfig) {
     super();
-    this.apiKey = config.apiKey;
+    this.apiKey = config.apiKey ?? '';
     this.model = config.model ?? 'gemini-2.0-flash';
   }
 

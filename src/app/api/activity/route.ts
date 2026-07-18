@@ -42,7 +42,7 @@ export async function GET() {
   const max = Math.max(...allDates.map((d) => d.sessions), 1);
 
   for (const d of allDates) {
-    (d as { intensity: number }).intensity = d.sessions / max;
+    (d as unknown as Record<string, unknown>).intensity = d.sessions / max;
   }
 
   return NextResponse.json({ dates: allDates, max, firstDate: allDates[0]?.date, lastDate: allDates[allDates.length - 1]?.date });

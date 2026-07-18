@@ -52,8 +52,12 @@ export default function DayPage() {
 
   const messagesBySession: Record<string, Message[]> = {};
   for (const msg of data.messages) {
-    if (!messagesBySession[msg.session_id]) messagesBySession[msg.session_id] = [];
-    messagesBySession[msg.session_id].push(msg);
+    const arr = messagesBySession[msg.session_id];
+    if (arr) {
+      arr.push(msg);
+    } else {
+      messagesBySession[msg.session_id] = [msg];
+    }
   }
 
   return (

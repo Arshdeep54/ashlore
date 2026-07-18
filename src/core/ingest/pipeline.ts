@@ -1,7 +1,6 @@
 import { createHash } from 'crypto';
 import { getDb } from '../db/connection';
 import type { BaseParser } from '../parsers/base';
-import type { ParserResult } from '../parsers/base';
 
 export class IngestionError extends Error {
   constructor(message: string) {

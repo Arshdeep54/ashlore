@@ -4,7 +4,6 @@ import os from 'os';
 import { BaseParser } from './base';
 import type { ParserResult, RawChatSession, RawChatMessage, RawToolInvocation } from './base';
 import { parserRegistry } from './registry';
-import type { AppConfig } from '../config/types';
 
 function msToISO(ms: number): string {
   return new Date(ms).toISOString();

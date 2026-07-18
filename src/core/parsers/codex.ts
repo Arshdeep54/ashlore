@@ -18,6 +18,7 @@ interface CodexThread {
   updated_at: string;
   first_user_message: string;
   tokens_used: number;
+  rollout_path: string;
 }
 
 interface RolloutMessage {
@@ -54,46 +55,20 @@ export class CodexParser extends BaseParser {
   async parse(): Promise<ParserResult> {
     const threads = this.loadThreads();
 
-    const historyMessages = await this.loadHistoryJsonl();
-    const messagesByThread = new Map<string, { text: string; ts: number }[]>();
-    for (const m of historyMessages) {
-      const group = messagesByThread.get(m.sessionId) || [];
-      group.push({ text: m.text, ts: m.ts });
-      messagesByThread.set(m.sessionId, group);
-    }
-
-    const rolloutMessages = await this.loadRollouts();
-    const rolloutByThread = new Map<string, RolloutMessage[]>();
-    for (const [threadId, msgs] of rolloutMessages) {
-      rolloutByThread.set(threadId, msgs);
-    }
-
-    const threadMap = new Map(threads.map((t) => [t.id, t]));
-
     const sessions: RawChatSession[] = [];
     const messages: RawChatMessage[] = [];
 
-    for (const [threadId, thread] of threadMap) {
-      const rolloutMsgs = rolloutByThread.get(threadId) ?? [];
-      const historyMsgs = messagesByThread.get(threadId) ?? [];
+    for (const thread of threads) {
+      const rolloutMsgs = await this.loadSingleRollout(thread.rollout_path);
 
-      if (rolloutMsgs.length === 0 && historyMsgs.length === 0) continue;
+      if (rolloutMsgs.length === 0) continue;
 
-      let firstTs = '';
-      let lastTs = '';
-
-      if (rolloutMsgs.length > 0) {
-        firstTs = rolloutMsgs[0].timestamp;
-        lastTs = rolloutMsgs[rolloutMsgs.length - 1].timestamp;
-      } else if (historyMsgs.length > 0) {
-        const timestamps = historyMsgs.map((m) => m.ts);
-        firstTs = unixToISO(Math.min(...timestamps));
-        lastTs = unixToISO(Math.max(...timestamps));
-      }
+      const firstTs = rolloutMsgs[0]!.timestamp;
+      const lastTs = rolloutMsgs[rolloutMsgs.length - 1]!.timestamp;
 
       sessions.push({
         source: this.name,
-        externalId: threadId,
+        externalId: thread.id,
         title: thread.title ?? thread.first_user_message?.slice(0, 120),
         project: extractProjectName(thread.cwd),
         projectPath: thread.cwd,
@@ -107,27 +82,15 @@ export class CodexParser extends BaseParser {
         },
       });
 
-      if (rolloutMsgs.length > 0) {
-        for (const msg of rolloutMsgs) {
-          if (!msg.text) continue;
-          messages.push({
-            sessionExternalId: threadId,
-            role: msg.role as 'user' | 'assistant',
-            content: msg.text,
-            timestamp: msg.timestamp,
-            metadata: { source: 'rollout' },
-          });
-        }
-      } else {
-        for (const msg of historyMsgs) {
-          messages.push({
-            sessionExternalId: threadId,
-            role: 'user',
-            content: msg.text,
-            timestamp: unixToISO(msg.ts),
-            metadata: { source: 'history_jsonl' },
-          });
-        }
+      for (const msg of rolloutMsgs) {
+        if (!msg.text) continue;
+        messages.push({
+          sessionExternalId: thread.id,
+          role: msg.role as 'user' | 'assistant' | 'system',
+          content: msg.text,
+          timestamp: msg.timestamp,
+          metadata: { source: 'rollout' },
+        });
       }
     }
 
@@ -138,6 +101,7 @@ export class CodexParser extends BaseParser {
     return this.stateDb
       .prepare(
         `SELECT id, title, cwd, source, model_provider, model,
+                rollout_path,
                 datetime(created_at, 'unixepoch') as created_at,
                 datetime(updated_at, 'unixepoch') as updated_at,
                 first_user_message, tokens_used
@@ -148,63 +112,31 @@ export class CodexParser extends BaseParser {
       .all() as CodexThread[];
   }
 
-  private async loadHistoryJsonl(): Promise<
-    { sessionId: string; ts: number; text: string }[]
-  > {
-    const results: { sessionId: string; ts: number; text: string }[] = [];
-    const filePath = path.join(process.cwd(), 'copies', 'codex-history.jsonl');
+  private async loadSingleRollout(filePath: string): Promise<RolloutMessage[]> {
+    const messages: RolloutMessage[] = [];
 
-    if (!fs.existsSync(filePath)) return results;
+    const localPath = filePath.replace(
+      path.join(os.homedir(), '.codex', 'sessions'),
+      path.join(process.cwd(), 'copies', 'codex-sessions')
+    );
 
-    const fileStream = fs.createReadStream(filePath);
+    if (!fs.existsSync(localPath)) return messages;
+
+    const fileStream = fs.createReadStream(localPath);
     const rl = readline.createInterface({ input: fileStream });
 
     for await (const line of rl) {
       try {
         const entry = JSON.parse(line);
-        results.push({
-          sessionId: entry.session_id,
-          ts: entry.ts,
-          text: entry.text,
-        });
-      } catch {
-        continue;
-      }
-    }
 
-    return results;
-  }
-
-  private async loadRollouts(): Promise<Map<string, RolloutMessage[]>> {
-    const result = new Map<string, RolloutMessage[]>();
-    const sessionsDir = path.join(process.cwd(), 'copies', 'codex-sessions');
-
-    if (!fs.existsSync(sessionsDir)) return result;
-
-    const rolloutFiles = this.findRolloutFiles(sessionsDir);
-
-    for (const filePath of rolloutFiles) {
-      const sessionId = path.basename(filePath, '.jsonl').split('-').pop() ?? '';
-      const messages: RolloutMessage[] = [];
-
-      const fileStream = fs.createReadStream(filePath);
-      const rl = readline.createInterface({ input: fileStream });
-
-      for await (const line of rl) {
-        try {
-          const entry = JSON.parse(line);
-          const payload = entry.payload ?? entry;
-
-          if (entry.type === 'response_item' && payload.type === 'message') {
+        if (entry.type === 'response_item') {
+          const payload = entry.payload;
+          if (payload.type === 'message' && Array.isArray(payload.content)) {
             const role = payload.role ?? 'unknown';
-
-            let text = '';
-            if (Array.isArray(payload.content)) {
-              text = payload.content
-                .filter((c: { type: string }) => c.type === 'input_text' || c.type === 'output_text')
-                .map((c: { text: string }) => c.text)
-                .join('\n');
-            }
+            const text = payload.content
+              .filter((c: { type: string }) => c.type === 'input_text' || c.type === 'output_text')
+              .map((c: { text: string }) => c.text)
+              .join('\n');
 
             if (text) {
               messages.push({
@@ -214,44 +146,13 @@ export class CodexParser extends BaseParser {
               });
             }
           }
-
-          if (payload.type === 'user_message' && payload.text) {
-            messages.push({
-              role: 'user',
-              text: payload.text,
-              timestamp: entry.timestamp ?? new Date().toISOString(),
-            });
-          }
-        } catch {
-          continue;
         }
-      }
-
-      if (messages.length > 0) {
-        result.set(sessionId, messages);
+      } catch {
+        continue;
       }
     }
 
-    return result;
-  }
-
-  private findRolloutFiles(dir: string): string[] {
-    const files: string[] = [];
-
-    function walk(d: string) {
-      const entries = fs.readdirSync(d, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(d, entry.name);
-        if (entry.isDirectory()) {
-          walk(fullPath);
-        } else if (entry.name.startsWith('rollout-') && entry.name.endsWith('.jsonl')) {
-          files.push(fullPath);
-        }
-      }
-    }
-
-    walk(dir);
-    return files;
+    return messages;
   }
 }
 
