@@ -1,8 +1,9 @@
 import Database from 'better-sqlite3';
+import fs from 'fs';
 import path from 'path';
-import os from 'os';
 import { BaseParser } from './base';
 import type { ParserResult, RawChatSession, RawChatMessage, RawToolInvocation } from './base';
+import type { AppConfig } from '../config/types';
 import { parserRegistry } from './registry';
 
 function msToISO(ms: number): string {
@@ -47,11 +48,24 @@ export class KiloParser extends BaseParser {
   readonly sourceDir: string;
   private db: Database.Database;
 
-  constructor() {
+  constructor(config: AppConfig) {
     super();
-    this.sourceDir = path.join(os.homedir(), '.local', 'share', 'kilo');
-    const copyPath = path.join(process.cwd(), 'copies', 'kilo.db');
-    this.db = new Database(copyPath, { readonly: true });
+    const configured = config.sources.kilo.databasePath;
+
+    if (!configured) {
+      throw new Error('Kilo Code: sources.kilo.databasePath is not set in lore.config.json');
+    }
+
+    const dbPath = configured.replace(/^~/, process.env.HOME || '/home');
+
+    if (!fs.existsSync(dbPath)) {
+      throw new Error(
+        `Kilo Code database not found at ${dbPath}. Check sources.kilo.databasePath in lore.config.json`
+      );
+    }
+
+    this.sourceDir = path.dirname(dbPath);
+    this.db = new Database(dbPath, { readonly: true });
   }
 
   canIncremental(): boolean {

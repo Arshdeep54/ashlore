@@ -1,4 +1,5 @@
 import type { BaseParser, ParserConstructor } from './base';
+import type { AppConfig } from '../config/types';
 
 class ParserRegistry {
   private parsers: Map<string, ParserConstructor> = new Map();
@@ -10,14 +11,14 @@ class ParserRegistry {
     this.parsers.set(name, parserClass);
   }
 
-  create(name: string): BaseParser {
+  create(name: string, config: AppConfig): BaseParser {
     const ParserClass = this.parsers.get(name);
     if (!ParserClass) {
       throw new Error(
         `Unknown parser "${name}". Available: ${this.list().join(', ')}`
       );
     }
-    return new ParserClass();
+    return new ParserClass(config);
   }
 
   list(): string[] {

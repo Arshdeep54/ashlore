@@ -40,7 +40,7 @@ program
         continue;
       }
 
-      const parser = parserRegistry.create(sourceName);
+      const parser = parserRegistry.create(sourceName, config);
 
       const result = await ingestParser(parser, { dryRun: options.dryRun });
 

@@ -8,7 +8,7 @@ getDb();
 const skills = runSkillExtraction();
 console.log(`Skills: ${skills.length} detected`);
 for (const s of skills.slice(0, 10)) {
-  console.log(`  ${s.name}: ${s.count} mentions`);
+  console.log(`  ${s.name}: ${s.mentions} mentions`);
 }
 
 const codeCount = extractCodeSnippets();

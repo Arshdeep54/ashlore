@@ -10,10 +10,10 @@ export class OpenAIProvider extends BaseLLMProvider {
   }
 
   async chat(_messages: Message[]): Promise<string> {
-    throw new Error('OpenAI provider not yet implemented');
+    throw new Error('OpenAI provider not yet implemented. Available providers: gemini');
   }
 
   async *chatStream(_messages: Message[]): AsyncIterable<string> {
-    throw new Error('OpenAI provider not yet implemented');
+    throw new Error('OpenAI provider not yet implemented. Available providers: gemini');
   }
 }

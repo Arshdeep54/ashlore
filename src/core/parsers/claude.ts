@@ -1,9 +1,9 @@
 import fs from 'fs';
 import readline from 'readline';
 import path from 'path';
-import os from 'os';
 import { BaseParser } from './base';
 import type { ParserResult, RawChatSession, RawChatMessage } from './base';
+import type { AppConfig } from '../config/types';
 import { parserRegistry } from './registry';
 
 interface ClaudeHistoryEntry {
@@ -42,10 +42,20 @@ function projectPathFromDir(dirName: string): string {
 export class ClaudeParser extends BaseParser {
   readonly name = 'claude';
   readonly sourceDir: string;
+  private historyPath: string;
+  private projectsDir: string;
 
-  constructor() {
+  constructor(config: AppConfig) {
     super();
-    this.sourceDir = path.join(os.homedir(), '.claude');
+    this.sourceDir = config.sources.claude.historyPath;
+    this.historyPath = config.sources.claude.historyPath.replace(/^~/, process.env.HOME || '/home');
+    this.projectsDir = config.sources.claude.projectsDir.replace(/^~/, process.env.HOME || '/home');
+
+    if (!fs.existsSync(this.historyPath)) {
+      throw new Error(
+        `Claude history not found at ${this.historyPath}. Check sources.claude.historyPath in lore.config.json`
+      );
+    }
   }
 
   canIncremental(): boolean {
@@ -53,17 +63,12 @@ export class ClaudeParser extends BaseParser {
   }
 
   async parse(): Promise<ParserResult> {
-    const historyPath = path.join(process.cwd(), 'copies', 'claude-history.jsonl');
-    const projectsDir = path.join(process.cwd(), 'copies', 'claude-projects');
-
-    const historyEntries = fs.existsSync(historyPath)
-      ? await this.loadHistoryJsonl(historyPath)
-      : [];
+    const historyEntries = await this.loadHistoryJsonl(this.historyPath);
 
     const historySessionIds = new Set(historyEntries.map((e) => e.sessionId));
 
-    const projectFiles = fs.existsSync(projectsDir)
-      ? await this.loadAllProjectFiles(projectsDir)
+    const projectFiles = fs.existsSync(this.projectsDir)
+      ? await this.loadAllProjectFiles(this.projectsDir)
       : [];
 
     const sessions: RawChatSession[] = [];

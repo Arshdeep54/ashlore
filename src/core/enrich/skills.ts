@@ -198,7 +198,7 @@ export function runSkillExtraction(): { name: string; mentions: number }[] {
     .prepare('SELECT m.id, m.content, m.session_id, s.date as msg_date FROM chat_messages m JOIN chat_sessions s ON m.session_id = s.id')
     .all() as { id: number; content: string; session_id: string; msg_date: string }[];
 
-  const results: { name: string; count: number }[] = [];
+  const results: { name: string; mentions: number }[] = [];
 
   for (const skill of SKILL_TAXONOMY) {
     let mentionCount = 0;

@@ -1,3 +1,5 @@
+import type { AppConfig } from '../config/types';
+
 export interface RawChatSession {
   source: string;
   externalId: string;
@@ -39,4 +41,4 @@ export abstract class BaseParser {
   abstract parse(): Promise<ParserResult>;
 }
 
-export type ParserConstructor = new () => BaseParser;
+export type ParserConstructor = new (config: AppConfig) => BaseParser;

@@ -2,9 +2,9 @@ import Database from 'better-sqlite3';
 import fs from 'fs';
 import readline from 'readline';
 import path from 'path';
-import os from 'os';
 import { BaseParser } from './base';
 import type { ParserResult, RawChatSession, RawChatMessage } from './base';
+import type { AppConfig } from '../config/types';
 import { parserRegistry } from './registry';
 
 interface CodexThread {
@@ -37,11 +37,18 @@ export class CodexParser extends BaseParser {
   readonly sourceDir: string;
   private stateDb: Database.Database;
 
-  constructor() {
+  constructor(config: AppConfig) {
     super();
-    this.sourceDir = path.join(os.homedir(), '.codex');
-    const statePath = path.join(process.cwd(), 'copies', 'codex-state.sqlite');
-    this.stateDb = new Database(statePath, { readonly: true });
+    const dbPath = config.sources.codex.stateDbPath.replace(/^~/, process.env.HOME || '/home');
+
+    if (!fs.existsSync(dbPath)) {
+      throw new Error(
+        `Codex database not found at ${dbPath}. Check sources.codex.stateDbPath in lore.config.json`
+      );
+    }
+
+    this.sourceDir = path.dirname(dbPath);
+    this.stateDb = new Database(dbPath, { readonly: true });
   }
 
   canIncremental(): boolean {
@@ -111,14 +118,9 @@ export class CodexParser extends BaseParser {
   private async loadSingleRollout(filePath: string): Promise<RolloutMessage[]> {
     const messages: RolloutMessage[] = [];
 
-    const localPath = filePath.replace(
-      path.join(os.homedir(), '.codex', 'sessions'),
-      path.join(process.cwd(), 'copies', 'codex-sessions')
-    );
+    if (!fs.existsSync(filePath)) return messages;
 
-    if (!fs.existsSync(localPath)) return messages;
-
-    const fileStream = fs.createReadStream(localPath);
+    const fileStream = fs.createReadStream(filePath);
     const rl = readline.createInterface({ input: fileStream });
 
     for await (const line of rl) {
