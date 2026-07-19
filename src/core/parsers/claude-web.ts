@@ -54,8 +54,8 @@ export class ClaudeWebParser extends BaseParser {
       const msgs = conv.chat_messages ?? [];
       if (msgs.length === 0) continue;
 
-      const firstMsg = msgs[0];
-      const lastMsg = msgs[msgs.length - 1];
+      const firstMsg = msgs[0]!;
+      const lastMsg = msgs[msgs.length - 1]!;
 
       sessions.push({
         source: this.name,

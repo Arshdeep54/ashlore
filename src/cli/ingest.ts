@@ -32,7 +32,7 @@ program
           : parserRegistry.list();
 
     for (const sourceName of sources) {
-      const configKey = sourceName.replace(/-./g, (m) => m[1].toUpperCase()) as keyof typeof config.sources;
+      const configKey = sourceName.replace(/-./g, (m: string) => m[1]!.toUpperCase()) as keyof typeof config.sources;
       const sourceConfig = config.sources[configKey];
       if (!sourceConfig) {
         console.log(`\n[${sourceName}] skipped — not found in config`);
