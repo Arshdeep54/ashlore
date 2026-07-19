@@ -36,6 +36,7 @@ function Sidebar() {
       <nav className="flex-1 px-3 py-4 space-y-1">
         <SidebarItem href="/" label="Today" />
         <SidebarItem href="/search" label="Search" />
+        <SidebarItem href="/chat" label="Chat" />
 
         <div className="pt-6 pb-1 px-2">
           <span className="text-[11px] uppercase tracking-wider text-zinc-600 font-medium">Knowledge</span>

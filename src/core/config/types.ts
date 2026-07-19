@@ -4,6 +4,7 @@ export const LlmConfigSchema = z.object({
   provider: z.enum(['gemini', 'openai', 'anthropic', 'ollama']),
   apiKey: z.string().optional(),
   model: z.string().optional(),
+  availableModels: z.array(z.string()).optional(),
 });
 
 export const EmbeddingConfigSchema = z.object({
