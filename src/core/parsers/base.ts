@@ -39,6 +39,7 @@ export abstract class BaseParser {
   abstract readonly sourceDir: string;
   abstract canIncremental(): boolean;
   abstract parse(): Promise<ParserResult>;
+  parseIncremental?(_cursor: number): Promise<ParserResult>;
 }
 
 export type ParserConstructor = new (config: AppConfig) => BaseParser;

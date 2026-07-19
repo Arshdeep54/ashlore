@@ -73,10 +73,18 @@ export class KiloParser extends BaseParser {
   }
 
   async parse(): Promise<ParserResult> {
+    return this._parse();
+  }
+
+  async parseIncremental(cursor: number): Promise<ParserResult> {
+    return this._parse(cursor);
+  }
+
+  private async _parse(cursor?: number): Promise<ParserResult> {
     const projects = this.loadProjects();
     const projectMap = new Map(projects.map((p) => [p.id, p]));
 
-    const sessions = this.loadSessions();
+    const sessions = this.loadSessions(cursor);
 
     const sessions_parsed: RawChatSession[] = [];
     const messages: RawChatMessage[] = [];
@@ -169,15 +177,16 @@ export class KiloParser extends BaseParser {
       .all() as KiloProject[];
   }
 
-  private loadSessions(): KiloSession[] {
-    return this.db
-      .prepare(
-        `SELECT id, project_id, title, time_created, time_updated, model, cost, tokens_input, tokens_output
+  private loadSessions(cursor?: number): KiloSession[] {
+    const sql = cursor
+      ? `SELECT id, project_id, title, time_created, time_updated, model, cost, tokens_input, tokens_output
+         FROM session WHERE time_created > ? ORDER BY time_created`
+      : `SELECT id, project_id, title, time_created, time_updated, model, cost, tokens_input, tokens_output
          FROM session
          WHERE datetime(time_created/1000, 'unixepoch') >= '2026-05-14'
-         ORDER BY time_created`
-      )
-      .all() as KiloSession[];
+         ORDER BY time_created`;
+
+    return this.db.prepare(sql).all(...(cursor ? [cursor] : [])) as KiloSession[];
   }
 
   private loadMessages(sessionId: string): KiloMessage[] {

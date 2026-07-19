@@ -63,7 +63,15 @@ export class ClaudeParser extends BaseParser {
   }
 
   async parse(): Promise<ParserResult> {
-    const historyEntries = await this.loadHistoryJsonl(this.historyPath);
+    return this._parse();
+  }
+
+  async parseIncremental(cursor: number): Promise<ParserResult> {
+    return this._parse(cursor);
+  }
+
+  private async _parse(cursor?: number): Promise<ParserResult> {
+    const historyEntries = await this.loadHistoryJsonl(this.historyPath, cursor);
 
     const historySessionIds = new Set(historyEntries.map((e) => e.sessionId));
 
@@ -178,7 +186,7 @@ export class ClaudeParser extends BaseParser {
     return { sessions, messages, toolInvocations: [] };
   }
 
-  private async loadHistoryJsonl(filePath: string): Promise<ClaudeHistoryEntry[]> {
+  private async loadHistoryJsonl(filePath: string, cursor?: number): Promise<ClaudeHistoryEntry[]> {
     const results: ClaudeHistoryEntry[] = [];
     const fileStream = fs.createReadStream(filePath);
     const rl = readline.createInterface({ input: fileStream });
@@ -186,9 +194,11 @@ export class ClaudeParser extends BaseParser {
     for await (const line of rl) {
       try {
         const entry = JSON.parse(line);
+        const ts = entry.timestamp ?? 0;
+        if (cursor && ts <= cursor) continue;
         results.push({
           display: entry.display ?? '',
-          timestamp: entry.timestamp ?? 0,
+          timestamp: ts,
           project: entry.project ?? '/',
           sessionId: entry.sessionId ?? '',
         });

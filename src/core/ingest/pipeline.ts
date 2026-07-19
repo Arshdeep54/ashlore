@@ -1,5 +1,6 @@
 import { createHash } from 'crypto';
 import { getDb } from '../db/connection';
+import { getCursor, saveCursor } from './cursors';
 import type { BaseParser } from '../parsers/base';
 
 export class IngestionError extends Error {
@@ -19,10 +20,23 @@ function sessionId(source: string, externalId: string): string {
 
 export async function ingestParser(
   parser: BaseParser,
-  options?: { dryRun?: boolean }
+  options?: { dryRun?: boolean; incremental?: boolean }
 ): Promise<{ sessions: number; messages: number; duplicates: number }> {
   const db = getDb();
-  const result = await parser.parse();
+  const isIncremental = options?.incremental && parser.canIncremental();
+
+  let result;
+
+  if (isIncremental && parser.parseIncremental) {
+    const cursor = getCursor(parser.name);
+    if (cursor) {
+      result = await parser.parseIncremental(cursor);
+    } else {
+      result = await parser.parse();
+    }
+  } else {
+    result = await parser.parse();
+  }
 
   if (options?.dryRun) {
     return {
@@ -32,11 +46,13 @@ export async function ingestParser(
     };
   }
 
+  const runType = isIncremental ? 'incremental' : 'full_backfill';
+
   const insertRun = db.prepare(`
     INSERT INTO ingestion_runs (run_type, sources_processed)
-    VALUES ('full_backfill', 1)
+    VALUES (?, 1)
   `);
-  const runResult = insertRun.run();
+  const runResult = insertRun.run(runType);
   const runId = Number(runResult.lastInsertRowid);
 
   let sessionCount = 0;
@@ -136,6 +152,10 @@ export async function ingestParser(
         messages_ingested = ?
     WHERE id = ?
   `).run(sessionCount, messageCount, runId);
+
+  if (isIncremental) {
+    saveCursor(parser.name, result);
+  }
 
   return { sessions: sessionCount, messages: messageCount, duplicates: duplicateCount };
 }

@@ -70,4 +70,37 @@ program
     }
   });
 
+const syncCmd = new Command('sync')
+  .description('Incremental sync — only new data since last run')
+  .option('-s, --source <name>', 'source to sync (kilo, codex, claude, all)')
+  .action(async (options) => {
+    const config = loadConfig();
+    getDb(config.database.path);
+
+    const sources =
+      options.source === 'all'
+        ? parserRegistry.list()
+        : options.source
+          ? [options.source]
+          : parserRegistry.list();
+
+    for (const sourceName of sources) {
+      const configKey = sourceName.replace(/-./g, (m: string) => m[1]!.toUpperCase()) as keyof typeof config.sources;
+      const sourceConfig = config.sources[configKey];
+      if (!sourceConfig || ('enabled' in sourceConfig && !sourceConfig.enabled)) continue;
+
+      const parser = parserRegistry.create(sourceName, config);
+
+      if (!parser.canIncremental()) {
+        console.log(`\n[${sourceName}] skipped — does not support incremental sync`);
+        continue;
+      }
+
+      const result = await ingestParser(parser, { incremental: true });
+      console.log(`\n[${sourceName}] ${result.sessions} new sessions, ${result.messages} new messages, ${result.duplicates} duplicates`);
+    }
+  });
+
+program.addCommand(syncCmd);
+
 program.parse();

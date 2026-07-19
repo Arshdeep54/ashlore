@@ -56,7 +56,15 @@ export class CodexParser extends BaseParser {
   }
 
   async parse(): Promise<ParserResult> {
-    const threads = this.loadThreads();
+    return this._parse();
+  }
+
+  async parseIncremental(cursor: number): Promise<ParserResult> {
+    return this._parse(cursor);
+  }
+
+  private async _parse(cursor?: number): Promise<ParserResult> {
+    const threads = this.loadThreads(cursor);
 
     const sessions: RawChatSession[] = [];
     const messages: RawChatMessage[] = [];
@@ -100,19 +108,28 @@ export class CodexParser extends BaseParser {
     return { sessions, messages, toolInvocations: [] };
   }
 
-  private loadThreads(): CodexThread[] {
-    return this.stateDb
-      .prepare(
-        `SELECT id, title, cwd, source, model_provider, model,
+  private loadThreads(cursor?: number): CodexThread[] {
+    const baseSql = cursor
+      ? `SELECT id, title, cwd, source, model_provider, model,
+                rollout_path,
+                datetime(created_at, 'unixepoch') as created_at,
+                datetime(updated_at, 'unixepoch') as updated_at,
+                first_user_message, tokens_used
+         FROM threads
+         WHERE created_at > ?
+         ORDER BY created_at`
+      : `SELECT id, title, cwd, source, model_provider, model,
                 rollout_path,
                 datetime(created_at, 'unixepoch') as created_at,
                 datetime(updated_at, 'unixepoch') as updated_at,
                 first_user_message, tokens_used
          FROM threads
          WHERE datetime(created_at, 'unixepoch') >= '2026-05-14'
-         ORDER BY created_at`
-      )
-      .all() as CodexThread[];
+         ORDER BY created_at`;
+
+    return this.stateDb
+      .prepare(baseSql)
+      .all(...(cursor ? [cursor] : [])) as CodexThread[];
   }
 
   private async loadSingleRollout(filePath: string): Promise<RolloutMessage[]> {
