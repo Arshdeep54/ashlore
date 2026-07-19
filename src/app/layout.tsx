@@ -43,6 +43,7 @@ function Sidebar() {
         <SidebarItem href="/skills" label="Skills" dot />
         <SidebarItem href="/snippets" label="Code" dot />
         <SidebarItem href="/links" label="Links" dot />
+        <SidebarItem href="/decisions" label="Decisions" dot />
 
         <div className="pt-6 pb-1 px-2">
           <span className="text-[11px] uppercase tracking-wider text-zinc-600 font-medium">Sources</span>

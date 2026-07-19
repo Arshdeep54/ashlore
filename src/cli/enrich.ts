@@ -2,6 +2,7 @@ import { getDb } from '../core/db/connection';
 import { runSkillExtraction } from '../core/enrich/skills';
 import { extractCodeSnippets } from '../core/enrich/code';
 import { extractLinks } from '../core/enrich/links';
+import { extractDecisions } from '../core/enrich/decisions';
 
 getDb();
 
@@ -16,3 +17,6 @@ console.log(`\nCode snippets: ${codeCount} extracted`);
 
 const linkCount = extractLinks();
 console.log(`Links: ${linkCount} extracted`);
+
+const decisionCount = extractDecisions();
+console.log(`\nDecisions: ${decisionCount} extracted`);
