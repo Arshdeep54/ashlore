@@ -5,6 +5,7 @@ import { parserRegistry } from '../core/parsers/registry';
 import '../core/parsers/kilo';
 import '../core/parsers/codex';
 import '../core/parsers/claude';
+import '../core/parsers/claude-web';
 import { ingestParser } from '../core/ingest/pipeline';
 
 const program = new Command();
@@ -31,12 +32,15 @@ program
           : parserRegistry.list();
 
     for (const sourceName of sources) {
-      const sourceConfig = config.sources[sourceName as keyof typeof config.sources];
+      const configKey = sourceName.replace(/-./g, (m) => m[1].toUpperCase()) as keyof typeof config.sources;
+      const sourceConfig = config.sources[configKey];
       if (!sourceConfig) {
+        console.log(`\n[${sourceName}] skipped — not found in config`);
         continue;
       }
 
       if ('enabled' in sourceConfig && !sourceConfig.enabled) {
+        console.log(`\n[${sourceName}] skipped — disabled in config`);
         continue;
       }
 
