@@ -1,8 +1,8 @@
 {
-  "name": "code-skills",
+  "name": "ashlore",
   "version": "0.1.0",
   "private": true,
-  "description": "Personal Knowledge Graph for Developers — ingest AI chats, commits, and work history into a queryable second brain",
+  "description": "Personal knowledge graph for developers — ingest AI chats, commits, and work history into a queryable second brain.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

@@ -1,15 +1,15 @@
-# lore
+# ashlore
 
 > your coding lore, searchable
 
-**lore** ingests your AI coding conversations (Kilo Code, Codex, Claude, ChatGPT) and GitHub commits into a single searchable SQLite database. Ask "what do I know about auth?" and get answers from your own history.
+**ashlore** ingests your AI coding conversations (Kilo Code, Codex, Claude, ChatGPT) and GitHub commits into a single searchable SQLite database. Ask "what do I know about auth?" and get answers from your own history.
 
 ---
 
 ## How it works
 
 ```
-Your AI tools → lore ingests everything → searchable knowledge.db
+Your AI tools → ashlore ingests everything → searchable knowledge.db
                                           (SQLite + FTS5)
 ```
 
@@ -21,7 +21,7 @@ Every chat session, every message, every tool invocation — normalized, dedupli
 
 ```bash
 pnpm install
-cp code-skills.config.example.json code-skills.config.json
+cp ashlore.config.example.json ashlore.config.json
 # edit config with your tool paths (defaults work for most setups)
 pnpm db:migrate
 pnpm ingest --source all    # backfill everything
@@ -80,7 +80,7 @@ src/
 
 ## Configuration
 
-`code-skills.config.json`:
+`ashlore.config.json`:
 
 ```json
 {

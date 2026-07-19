@@ -53,7 +53,7 @@ export class ClaudeParser extends BaseParser {
 
     if (!fs.existsSync(this.historyPath)) {
       throw new Error(
-        `Claude history not found at ${this.historyPath}. Check sources.claude.historyPath in lore.config.json`
+        `Claude history not found at ${this.historyPath}. Check sources.claude.historyPath in ashlore.config.json`
       );
     }
   }

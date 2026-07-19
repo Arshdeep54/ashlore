@@ -53,14 +53,14 @@ export class KiloParser extends BaseParser {
     const configured = config.sources.kilo.databasePath;
 
     if (!configured) {
-      throw new Error('Kilo Code: sources.kilo.databasePath is not set in lore.config.json');
+      throw new Error('Kilo Code: sources.kilo.databasePath is not set in ashlore.config.json');
     }
 
     const dbPath = configured.replace(/^~/, process.env.HOME || '/home');
 
     if (!fs.existsSync(dbPath)) {
       throw new Error(
-        `Kilo Code database not found at ${dbPath}. Check sources.kilo.databasePath in lore.config.json`
+        `Kilo Code database not found at ${dbPath}. Check sources.kilo.databasePath in ashlore.config.json`
       );
     }
 

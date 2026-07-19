@@ -43,12 +43,12 @@ function resolveConfigValues(config: Record<string, unknown>): Record<string, un
 }
 
 export function loadConfig(configPath?: string): AppConfig {
-  const defaultPath = path.join(process.cwd(), 'lore.config.json');
+  const defaultPath = path.join(process.cwd(), 'ashlore.config.json');
   const resolvedPath = configPath ?? defaultPath;
 
   if (!fs.existsSync(resolvedPath)) {
     throw new ConfigError(
-      `Config file not found at ${resolvedPath}. Copy lore.config.example.json to lore.config.json and edit it.`
+      `Config file not found at ${resolvedPath}. Copy ashlore.config.example.json to ashlore.config.json and edit it.`
     );
   }
 

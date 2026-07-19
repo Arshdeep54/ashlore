@@ -6,12 +6,13 @@ import '../core/parsers/kilo';
 import '../core/parsers/codex';
 import '../core/parsers/claude';
 import '../core/parsers/claude-web';
+import '../core/parsers/github';
 import { ingestParser } from '../core/ingest/pipeline';
 
 const program = new Command();
 
 program
-  .name('code-skills')
+  .name('ashlore')
   .description('Personal Knowledge Graph — ingest AI chats and git history')
   .version('0.1.0');
 

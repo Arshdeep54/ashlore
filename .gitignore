@@ -5,7 +5,7 @@ dist/
 knowledge.db
 knowledge.db-wal
 knowledge.db-shm
-lore.config.json
+ashlore.config.json
 copies/
 plan/
 .env

@@ -43,7 +43,7 @@ export class CodexParser extends BaseParser {
 
     if (!fs.existsSync(dbPath)) {
       throw new Error(
-        `Codex database not found at ${dbPath}. Check sources.codex.stateDbPath in lore.config.json`
+        `Codex database not found at ${dbPath}. Check sources.codex.stateDbPath in ashlore.config.json`
       );
     }
 

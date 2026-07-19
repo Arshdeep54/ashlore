@@ -13,7 +13,7 @@ export async function GET() {
     )
     .all() as any[];
 
-  let markdown = "# lore — Export\n\n";
+  let markdown = "# ashlore — Export\n\n";
 
   let currentDate = "";
 
