@@ -27,10 +27,6 @@ interface RolloutMessage {
   timestamp: string;
 }
 
-function unixToISO(ts: number): string {
-  return new Date(ts * 1000).toISOString();
-}
-
 function extractProjectName(cwd: string): string {
   if (!cwd || cwd === '/') return 'global';
   return path.basename(cwd);

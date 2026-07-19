@@ -1,7 +1,7 @@
 import { sqliteTable, integer, text, real, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const MIGRATIONS: Record<number, string[]> = {
   1: [

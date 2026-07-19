@@ -41,7 +41,15 @@ function Sidebar() {
       <nav className="flex-1 px-3 py-4 space-y-1">
         <SidebarItem href="/" label="Today" />
         <SidebarItem href="/search" label="Search" />
-        <SidebarItem href="/chat" label="Chat" />
+
+        <div className="pt-6 pb-1 px-2">
+          <span className="text-[11px] uppercase tracking-wider text-zinc-600 font-medium">
+            Knowledge
+          </span>
+        </div>
+        <SidebarItem href="/skills" label="Skills" dot />
+        <SidebarItem href="/snippets" label="Code" dot />
+        <SidebarItem href="/links" label="Links" dot />
 
         <div className="pt-6 pb-1 px-2">
           <span className="text-[11px] uppercase tracking-wider text-zinc-600 font-medium">
@@ -52,6 +60,19 @@ function Sidebar() {
         <SidebarItem href="/sources/codex" label="Codex" dot />
         <SidebarItem href="/sources/claude" label="Claude" dot />
         <SidebarItem href="/sources/github" label="GitHub" dot disabled />
+
+        <div className="pt-6 pb-1 px-2">
+          <span className="text-[11px] uppercase tracking-wider text-zinc-600 font-medium">
+            Export
+          </span>
+        </div>
+        <a
+          href="/api/export"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-all duration-150 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/30"
+        >
+          <span className="w-1 h-1 rounded-full bg-zinc-600" />
+          Markdown
+        </a>
 
         <div className="pt-6 pb-1 px-2">
           <span className="text-[11px] uppercase tracking-wider text-zinc-600 font-medium">

@@ -12,6 +12,8 @@
     "ingest:all": "tsx src/cli/ingest.ts --source all",
     "ingest:dry": "tsx src/cli/ingest.ts --source all --dry-run",
     "db:migrate": "tsx src/cli/migrate.ts",
+    "enrich": "tsx src/cli/enrich.ts",
+    "export": "tsx src/cli/export.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
